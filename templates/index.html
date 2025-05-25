@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>F.P.F.C - Mã hóa File</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <h1>F.P.F.C</h1>
+            
+            <div class="file-limit-notice">
+                Giới hạn kích thước file: 25MB
+            </div>
+
+            <div id="alert" class="alert" style="display: none;"></div>
+
+            <form action="{{ url_for('encrypt') }}" method="post" enctype="multipart/form-data" class="upload-form">
+                <div class="file-upload">
+                    <input type="file" name="file" id="file" required>
+                    <label for="file">
+                        <span class="file-name">Chọn file để mã hóa</span>
+                        <span class="file-button">Browse</span>
+                    </label>
+                </div>
+
+                <div class="key-input">
+                    <input type="text" name="key" placeholder="Nhập key mã hóa" required>
+                </div>
+
+                <button type="submit" class="encrypt-button">
+                    <span class="button-text">Mã hóa File</span>
+                    <div class="loading-spinner"></div>
+                </button>
+            </form>
+
+            <div id="download-section" style="display: none;">
+                <div class="file-info">
+                    <span class="original-file"></span>
+                    <span class="arrow">→</span>
+                    <span class="encrypted-file"></span>
+                </div>
+                <a id="download-link" class="download-button" href="#">
+                    <span class="download-icon">↓</span>
+                    Tải xuống file đã mã hóa
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Hiển thị tên file khi chọn
+        document.getElementById('file').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const fileName = file.name;
+                const fileSize = file.size;
+                const maxSize = 25 * 1024 * 1024; // 25MB
+
+                if (fileSize > maxSize) {
+                    showAlert('File vượt quá giới hạn 25MB', true);
+                    this.value = '';
+                    document.querySelector('.file-name').textContent = 'Chọn file để mã hóa';
+                    return;
+                }
+
+                // Tách tên file và đuôi file
+                const lastDotIndex = fileName.lastIndexOf('.');
+                const name = fileName.substring(0, lastDotIndex);
+                const extension = fileName.substring(lastDotIndex + 1);
+                
+                document.querySelector('.file-name').textContent = fileName;
+                showAlert('', false);
+            }
+        });
+
+        // Hiển thị thông báo
+        function showAlert(message, isError) {
+            const alert = document.getElementById('alert');
+            if (message) {
+                alert.textContent = message;
+                alert.style.display = 'block';
+                alert.style.backgroundColor = isError ? 'rgba(255, 0, 0, 0.1)' : 'rgba(0, 255, 0, 0.1)';
+                alert.style.color = isError ? '#ff6b6b' : '#4caf50';
+            } else {
+                alert.style.display = 'none';
+            }
+        }
+
+        // Xử lý form submit
+        document.querySelector('.upload-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const button = this.querySelector('.encrypt-button');
+            const formData = new FormData(this);
+            
+            try {
+                button.classList.add('loading');
+                showAlert('Đang mã hóa file...', false);
+                
+                const response = await fetch('/encrypt', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showAlert('Mã hóa thành công!', false);
+                    
+                    // Hiển thị thông tin file
+                    const file = document.getElementById('file').files[0];
+                    const fileName = file.name;
+                    const lastDotIndex = fileName.lastIndexOf('.');
+                    const name = fileName.substring(0, lastDotIndex);
+                    const extension = fileName.substring(lastDotIndex + 1);
+                    
+                    document.querySelector('.original-file').textContent = `${name}.${extension}`;
+                    document.querySelector('.encrypted-file').textContent = `${name}(${extension}).bin`;
+                    
+                    // Hiển thị nút tải về
+                    const downloadSection = document.getElementById('download-section');
+                    const downloadLink = document.getElementById('download-link');
+                    downloadLink.href = `/download/${data.filename}`;
+                    downloadSection.style.display = 'block';
+                } else {
+                    showAlert(data.error, true);
+                }
+            } catch (error) {
+                showAlert('Lỗi khi xử lý file', true);
+            } finally {
+                button.classList.remove('loading');
+            }
+        });
+    </script>
+</body>
+</html> 
